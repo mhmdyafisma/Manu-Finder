@@ -1,0 +1,48 @@
+.image-container {
+  position: relative;   /* Makes this container the anchor for absolute positioning */
+  display: inline-block;/* Keeps the container tightly bound to the image size */
+}
+
+.image-container img {
+  display: block;       /* Removes extra white space under the image */
+  width: 100%;          /* Optional: ensures responsiveness */
+  height: auto;
+}
+
+.overlay-text {
+  position: absolute;   /* Layers the text completely over the image */
+  top: 50%;             /* Moves the text 50% down from the top */
+  left: 50%;            /* Moves the text 50% from the left */
+  transform: translate(-50%, -50%); /* Perfectly centers the text exactly in the middle */
+  
+  /* Optional text styling for readability */
+  color: white;         
+  font-size: 24px;
+  font-weight: bold;
+  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black box behind text */
+  padding: 10px 20px;
+  border-radius: 5px;
+}
+.content{
+  height: 500px;
+}
+.left{
+  width: 30%;
+  height: 400px;
+  background-color: #f8f9fa;
+  float: left;
+}
+.right{
+  width: 50%;
+  height: 400px;
+  background-color: #e9ecef;
+  float: right;
+}
+#mar-t{
+  margin-top: 250px;
+}
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
