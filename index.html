@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#090c15">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Manu Finder — Visual Similarity Search for Designers</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- =========================================================================
+       App Header
+       ========================================================================= -->
+  <header class="app-header">
+    <div class="brand-wrapper">
+      <div class="brand-logo-icon">🔍</div>
+      <div>
+        <div class="brand-title">Manu Finder</div>
+        <div class="brand-subtitle">Visual Match OS</div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="nav-btn active" data-tab="find">
+        <span>🔎</span> Find Match
+      </button>
+      <button class="nav-btn" data-tab="vault">
+        <span>🗄️</span> Design Vault
+      </button>
+      <button class="nav-btn" data-tab="upload">
+        <span>➕</span> Add Designs
+      </button>
+      <button class="nav-btn" data-tab="demo">
+        <span>🧪</span> Demo & Tools
+      </button>
+    </nav>
+
+    <!-- Header Stats -->
+    <div class="header-stats">
+      <div class="stat-pill" title="Designs indexed in your local library">
+        <span>📁</span> <span id="statCount">0 Designs</span>
+      </div>
+      <div class="stat-pill" title="Local IndexedDB storage utilized">
+        <span>💾</span> <span id="statStorage">0.00 MB</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- =========================================================================
+       Main Application Container
+       ========================================================================= -->
+  <main class="app-main">
+
+    <!-- TAB 1: FIND MATCH -->
+    <section id="tab-find" class="tab-panel">
+      <div class="search-hero">
+        <h2>Find Past Designs in Seconds</h2>
+        <p>Drop a reference image sent by a client or press <b>Ctrl + V</b> to paste from your clipboard.</p>
+      </div>
+
+      <!-- Dropzone -->
+      <div class="dropzone-container">
+        <div id="searchDropzone" class="dropzone-box">
+          <input type="file" id="searchFileInput" accept="image/*" class="hidden" style="display:none;">
+          <div class="dropzone-icon">📥</div>
+          <div class="dropzone-prompt">Drop client image here or click to browse</div>
+          <div class="dropzone-sub">Supports PNG, JPG, WEBP, SVG • Evaluates perceptual hashes, palette & layout</div>
+          <div class="dropzone-hints">
+            <span class="badge-hint kbd">⌨️ Press Ctrl + V anywhere to paste screenshot</span>
+            <span class="badge-hint">🔒 100% Local &amp; Private</span>
+          </div>
+        </div>
+
+        <!-- Query Preview Bar (Revealed when image is active) -->
+        <div id="queryPreviewContainer" class="query-preview-card hidden">
+          <div class="query-preview-left">
+            <div class="query-img-wrapper">
+              <img id="queryImgPreview" src="" alt="Query Reference">
+            </div>
+            <div class="query-info">
+              <h4 id="queryFileName">Reference Image</h4>
+              <div id="queryMetaDetails" class="query-meta">Dimensions loading...</div>
+              <div class="color-palette-row">
+                <span class="label-tiny" style="margin-right: 4px;">Palette:</span>
+                <div id="queryDominantColors" class="color-palette-row"></div>
+              </div>
+            </div>
+          </div>
+          <div class="query-preview-actions">
+            <button class="btn btn-secondary" id="clearSearchBtn">
+              <span>✕</span> Clear / New Search
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Search Controls Bar -->
+      <div class="search-controls-bar">
+        <div class="slider-group">
+          <label for="thresholdSlider">Min Similarity Match:</label>
+          <input type="range" id="thresholdSlider" min="20" max="95" value="40" step="5">
+          <span class="slider-val" id="thresholdValue">40%</span>
+        </div>
+        <div class="text-xs text-muted">
+          <span>⚡ Multi-tier algorithm: <b>pHash</b> + <b>dHash</b> + <b>Spatial Palette</b> + <b>Layout Edges</b></span>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div id="searchLoading" class="text-center p-8 hidden">
+        <div style="font-size: 2rem; margin-bottom: 0.5rem; animation: spin 1s infinite linear;">⚙️</div>
+        <p class="text-muted">Computing perceptual fingerprints &amp; querying design vault...</p>
+      </div>
+
+      <!-- Search Results Grid -->
+      <div id="resultsHeader" class="results-header hidden">
+        <h3>Match Results</h3>
+        <span id="resultsCount" class="text-sm text-muted">Found 0 matches</span>
+      </div>
+      <div id="searchResultsList" class="results-grid"></div>
+    </section>
+
+    <!-- TAB 2: DESIGN VAULT -->
+    <section id="tab-vault" class="tab-panel hidden">
+      <div class="vault-header-bar">
+        <div class="vault-search-box">
+          <span class="search-input-icon">🔍</span>
+          <input type="text" id="vaultSearchInput" placeholder="Search by project name, client, or tag (e.g. #Logo)...">
+        </div>
+        <div class="vault-sort-group">
+          <label for="vaultSortSelect">Sort by:</label>
+          <select id="vaultSortSelect">
+            <option value="newest">Newest Added</option>
+            <option value="oldest">Oldest First</option>
+            <option value="title">Title (A-Z)</option>
+            <option value="client">Client Name</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tag Filters -->
+      <div id="vaultTagFilters" class="filter-tags-scroll">
+        <button class="filter-chip active" data-tag="ALL">All Designs</button>
+      </div>
+
+      <!-- Gallery Grid -->
+      <div id="vaultGrid" class="vault-grid"></div>
+    </section>
+
+    <!-- TAB 3: ADD DESIGNS (UPLOAD) -->
+    <section id="tab-upload" class="tab-panel hidden">
+      <div class="search-hero">
+        <h2>Ingest Designs into Your Vault</h2>
+        <p>Drag past project assets, portfolio exports, or client deliverables to catalog and fingerprint them.</p>
+      </div>
+
+      <div class="dropzone-container">
+        <div id="uploadDropzone" class="dropzone-box">
+          <input type="file" id="uploadFileInput" accept="image/*" multiple class="hidden" style="display:none;">
+          <div class="dropzone-icon">📁</div>
+          <div class="dropzone-prompt">Choose files or drop multiple images here</div>
+          <div class="dropzone-sub">Batch select 1 to 50+ images at once • Automatically fingerprints on import</div>
+        </div>
+
+        <!-- Progress Box -->
+        <div id="uploadProgressBox" class="mt-4 hidden" style="background: var(--bg-card); padding: 1rem; border-radius: 8px;">
+          <div id="uploadProgressText" class="text-sm mb-2 text-muted">Indexing designs...</div>
+          <div class="progress-bar-bg" style="height: 8px;">
+            <div id="uploadProgressBar" class="progress-bar-fill" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Staged files list -->
+        <div id="stagedList" class="staged-list-container"></div>
+
+        <div class="mt-4 flex justify-between items-center" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem;">
+          <span id="stagedCountBadge" class="text-muted text-sm">0 selected</span>
+          <button id="saveUploadsBtn" class="btn btn-primary" disabled>
+            <span>💾</span> Index &amp; Save All to Vault
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: DEMO & TOOLS -->
+    <section id="tab-demo" class="tab-panel hidden">
+      <div class="search-hero">
+        <h2>Demo Suite &amp; Library Utilities</h2>
+        <p>Test the visual matching engine immediately with realistic mockups, or manage your database backup.</p>
+      </div>
+
+      <div class="demo-cards-grid">
+        <div class="demo-card">
+          <div>
+            <h4>🎨 1. Load Sample Design Pack</h4>
+            <p>Populates your vault with 4 distinct designer mockups (Fintech App, Organic Tea Packaging, Cyberpunk Event Poster, Minimalist Architecture Editorial).</p>
+          </div>
+          <button id="loadSamplePackBtn" class="btn btn-primary">Load 4 Sample Mockups</button>
+        </div>
+
+        <div class="demo-card">
+          <div>
+            <h4>⚡ 2. Simulate Client WhatsApp Revision</h4>
+            <p>Generates a tweaked client revision (changed hero headline, altered button color, WhatsApp watermark) and runs search to prove a 95%+ match!</p>
+          </div>
+          <button id="testRevisionBtn" class="btn btn-primary">Run Revision Match Test</button>
+        </div>
+
+        <div class="demo-card">
+          <div>
+            <h4>💾 3. Export Vault Backup</h4>
+            <p>Exports all catalog designs, client metadata, tags, and pre-computed visual hashes into a single JSON file for offline backup.</p>
+          </div>
+          <button id="exportBackupBtn" class="btn btn-secondary">Export Backup (JSON)</button>
+        </div>
+
+        <div class="demo-card">
+          <div>
+            <h4>⚠️ 4. Reset Local Library</h4>
+            <p>Clears all designs from browser IndexedDB storage. Use this if you want to start fresh with a clean slate.</p>
+          </div>
+          <button id="clearVaultBtn" class="btn btn-danger">Clear All Designs</button>
+        </div>
+      </div>
+
+      <div id="sampleLoadProgress" class="text-center p-4 text-cyan-400 hidden mt-4">
+        Generating artwork...
+      </div>
+    </section>
+
+  </main>
+
+  <!-- =========================================================================
+       Interactive Comparison Modal (Split Slider / Pixel Diff)
+       ========================================================================= -->
+  <div id="comparisonModal" class="modal-backdrop hidden">
+    <div class="comparison-modal-window">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h3>Visual Comparison &amp; Inspector</h3>
+        </div>
+        <button id="closeComparisonBtn" class="modal-close-btn" title="Close (Esc)">&times;</button>
+      </div>
+
+      <div class="comparison-modal-body">
+        <!-- Main Comparison Stage -->
+        <div class="comparison-stage">
+          <!-- View Mode Selector -->
+          <div class="stage-toolbar">
+            <button class="comp-mode-btn active" data-mode="split">⇄ Split Slider</button>
+            <button class="comp-mode-btn" data-mode="diff">🔥 Pixel Diff Heatmap</button>
+            <button class="comp-mode-btn" data-mode="side-by-side">◫ Side-by-Side</button>
+          </div>
+
+          <!-- Mode 1: Split Slider -->
+          <div id="splitViewWrapper" class="split-slider-container">
+            <div id="splitContainer" style="width: 100%; height: 100%; position: relative;">
+              <!-- Underneath Layer: Catalog Match -->
+              <div class="split-layer layer-base">
+                <img id="compMatchImg" src="" alt="Catalog Original">
+              </div>
+
+              <!-- Top Layer: Client Reference Query -->
+              <div id="splitOverlay" class="split-layer layer-overlay">
+                <img id="compQueryImg" src="" alt="Client Query">
+              </div>
+
+              <!-- Draggable Divider Line and Handle -->
+              <div id="splitDivider" class="split-divider-line"></div>
+              <div id="splitHandle" class="split-slider-handle">⇄</div>
+
+              <!-- Labels -->
+              <div class="split-label label-left">Client Reference (Query)</div>
+              <div class="split-label label-right">Original Catalog Design</div>
+            </div>
+          </div>
+
+          <!-- Mode 2: Pixel Diff Heatmap -->
+          <div id="diffViewWrapper" class="diff-view-box hidden">
+            <canvas id="diffCanvas"></canvas>
+            <div class="diff-legend">
+              Bright <span>Magenta/Red highlights</span> indicate areas altered or cropped by the client.
+            </div>
+          </div>
+
+          <!-- Mode 3: Side-by-Side -->
+          <div id="sideBySideWrapper" class="side-by-side-grid hidden">
+            <div class="side-panel">
+              <div class="side-panel-header">Client Reference (Query)</div>
+              <div class="side-panel-body">
+                <img id="sideQueryImg" src="" alt="Client Query">
+              </div>
+            </div>
+            <div class="side-panel">
+              <div class="side-panel-header">Original Catalog Design</div>
+              <div class="side-panel-body">
+                <img id="sideMatchImg" src="" alt="Catalog Design">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar Inspector & Metadata -->
+        <div class="comparison-sidebar">
+          <div class="comp-score-hero">
+            <div id="compScore" class="comp-score-large">98%</div>
+            <div id="compBadge" class="comp-badge badge-exact">Exact Match / Export</div>
+          </div>
+
+          <div class="comp-meta-section">
+            <h4>Matched Design</h4>
+            <p id="compTitle" style="font-weight: 700; font-size: 1.1rem; color: #fff;">NeoFin Wealth OS Hero</p>
+          </div>
+
+          <div class="comp-meta-section">
+            <h4>Client</h4>
+            <p id="compClient">Apex Capital Inc.</p>
+          </div>
+
+          <div class="comp-meta-section">
+            <h4>Tags</h4>
+            <div id="compTags"></div>
+          </div>
+
+          <div class="comp-meta-section">
+            <h4>Fingerprint Breakdown</h4>
+            <div id="compBreakdown"></div>
+          </div>
+
+          <div class="comp-meta-section">
+            <h4>Project Notes</h4>
+            <p id="compNotes" style="font-size: 0.85rem; color: #cbd5e1;"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       Design Details Modal
+       ========================================================================= -->
+  <div id="designDetailModal" class="modal-backdrop hidden">
+    <div class="detail-modal-window">
+      <div class="modal-header">
+        <h3 id="modalDetailTitle">Design Details</h3>
+        <button id="closeDetailModalBtn" class="modal-close-btn">&times;</button>
+      </div>
+      <div class="detail-modal-body">
+        <div class="detail-img-box">
+          <img id="modalDetailImg" src="" alt="Detail Image">
+        </div>
+        <div class="detail-info-box">
+          <div>
+            <span class="label-tiny">CLIENT</span>
+            <h4 id="modalDetailClient" style="font-size: 1.15rem; color: #fff; margin-top: 2px;"></h4>
+          </div>
+          <div>
+            <span class="label-tiny">DATE ADDED</span>
+            <p id="modalDetailDate" class="text-muted text-sm"></p>
+          </div>
+          <div>
+            <span class="label-tiny">RESOLUTION</span>
+            <p id="modalDetailDims" class="text-muted text-sm"></p>
+          </div>
+          <div>
+            <span class="label-tiny">TAGS</span>
+            <div id="modalDetailTags" class="mt-1"></div>
+          </div>
+          <div>
+            <span class="label-tiny">PROJECT NOTES</span>
+            <p id="modalDetailNotes" class="text-sm" style="color: #cbd5e1; margin-top: 4px;"></p>
+          </div>
+          <div style="margin-top: auto; display: flex; gap: 0.75rem;">
+            <button id="downloadDesignBtn" class="btn btn-primary" style="flex: 1;">
+              <span>💾</span> Download Master
+            </button>
+            <button id="deleteDesignBtn" class="btn btn-danger">
+              <span>🗑️</span> Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="js/db.js"></script>
+  <script src="js/search-engine.js"></script>
+  <script src="js/comparison.js"></script>
+  <script src="js/sample-data.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
